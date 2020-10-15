@@ -3,6 +3,7 @@ version: '3'
 services:
   # MongoDB: https://hub.docker.com/_/mongo/
   mongo:
+    restart: always 
     image: mongo:3
     networks:
       - graylog
@@ -10,12 +11,13 @@ services:
       - ./mongo_data:/data/db
   # Elasticsearch: https://www.elastic.co/guide/en/elasticsearch/reference/6.x/docker.html
   elasticsearch:
+    restart: always
     image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.8.5
     environment:
       - http.host=0.0.0.0
       - transport.host=localhost
       - network.host=0.0.0.0
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "ES_JAVA_OPTS=-Xms1G -Xmx1G"
     ulimits:
       memlock:
         soft: -1
@@ -23,20 +25,23 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1g
+          memory: 2g
     networks:
       - graylog
+    ports:
+      - 9200:9200
     volumes:
       - ./es_data:/usr/share/elasticsearch/data
   # Graylog: https://hub.docker.com/r/graylog/graylog/
   graylog:
-    image: graylog/graylog:3.2
+    restart: always
+    image: graylog/graylog:3.3.5
     environment:
       # CHANGE ME (must be at least 16 characters)!
       - GRAYLOG_PASSWORD_SECRET=somepasswordpepper
       # Password: admin
       - GRAYLOG_ROOT_PASSWORD_SHA2=8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
-      - GRAYLOG_HTTP_EXTERNAL_URI=http://127.0.0.1:9000/
+      - GRAYLOG_HTTP_EXTERNAL_URI=https://graylog.vmw.mmaks17.ru/
     networks:
       - graylog
     depends_on:
@@ -51,12 +56,17 @@ services:
       - 1514:1514/udp
       # GELF TCP
       - 12201:12201
+      # GELF HTTP
+      - 12202:12202
       # GELF UDP
       - 12201:12201/udp
+      - 5044:5044/tcp
+      - 2055:2055/udp
     volumes:
       # Mount local configuration directory into Docker container
       - ./graylog/config:/usr/share/graylog/data/config
       - ./graylog/journal:/usr/share/graylog/data/journal
+      - ./graylog/plugin:/usr/share/graylog/plugin
 networks:
   graylog:
     driver: bridge
